@@ -1,3 +1,8 @@
+from referee.game import *
+from team_name.state import *
+import random
+import numpy as py
+#python -m referee team_name team_name
 
 class Player:
     def __init__(self, player):
@@ -10,6 +15,14 @@ class Player:
         as Lower).
         """
         # put your code here
+        #initial state
+        self.state = State()
+        #assign a colour to the player
+        self.player = player
+        if(player == "lower"):
+            self.opponent_color = "upper"
+        else:
+            self.opponent_color = "lower" 
 
     def action(self):
         """
@@ -17,8 +30,39 @@ class Player:
         of the game, select an action to play this turn.
         """
         # put your code here
+        player_actions = list(self.state.available_actions(self.player, 1))
+        opponent_actions = list(self.state.available_actions(self.player, -1))
+        if(self.state.throws["upper"] == 0):
+            return random.choice(player_actions)
+        #
+        #
+
+        minimum = -np.inf
+        chosen_action = None      
+        # the minimax goes here
+        for player_action in player_actions:                        
+            maximun = np.inf
+            for opponent_action in opponent_actions:
+                action, defeated = self.state.update_state(opponent_action, player_action, self.player)
+                current_utility = self.state.evaluation(defeated,self.player)
+                self.state.Backtracking(action,defeated)                
+                # a-b purning                
+                if current_utility < maximun:
+                    if current_utility <= minimum:
+                        maximum = -np.inf #  no longer consider this action
+                        break
+                    maximum = current_utility
+            # 
+            if maximum > minimum:
+                chosen_action = player_action
+                minimum = maximum        
+        #player_action= random.choice(player_actions)
+        return chosen_action
+        
+        
     
     def update(self, opponent_action, player_action):
+        
         """
         Called at the end of each turn to inform this player of both
         players' chosen actions. Update your internal representation
@@ -27,4 +71,7 @@ class Player:
         and player_action is this instance's latest chosen action.
         """
         # put your code here
+        self.state.update_state(opponent_action, player_action, self.player)
+
+    
 
