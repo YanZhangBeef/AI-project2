@@ -139,26 +139,15 @@ class State:
 
     def evaluation(self, colour):
         upper, lower = self.process_a_board()
-        #d: distance to target; rt: remaing throw. no: number of token; ui: invicible tokens
-        ud,ld,rtu,rtl,nou,nol,ui,li = feature_selection(upper,lower,self.throws)
-        upper_score = ud + nou + 3*ui
-        lower_score = ld + nol + 3*li
-        #
-
-
-        #avoid the opponent has a invincible token
-        #or you can call it the termination test
-        opponent, inv = ("upper", ui) if colour == "lower" else ("lower", li)
-        if(self.throws[colour] >= 7 and self.throws[opponent] > self.throws[colour]):        
-            if(self.throws[opponent] >= 8):
-                if self.throws[colour] - self.throws[opponent] > inv:
-                    return -999                      
+        ud,ld,rtu,rtl,nou,nol = feature_selection(upper,lower,self.throws)
+        upper_score = ud + 10*nou
+        lower_score = ld + 10*nol
         if(colour == "upper"):
             return upper_score - lower_score
         return lower_score - upper_score
     
 
-    def process_a_board(self):  
+    def process_a_board(self):
         upper_tokens = {"s" : [], "p" : [], "r" : []}
         lower_tokens = {"s" : [], "p" : [], "r" : []}
         for x, s in self.board.items():
@@ -175,28 +164,24 @@ def manhattan_distance(a,b):
     return (abs(ax- bx) + abs(ay - by) + abs(ax + ay - bx - by))/2
         
 def my_sum(ls):
-    return 2/np.power(2.73,0.5*ls)
+    re = 0
+    for l in ls:
+        # x = x +2/(e^x), closer have a higher weight.
+        re = re + 2/np.power(2.71,l)
+    return re
     
 def calculating_distance(player,opponent):
-    maximum_target_distance = -1
-    maximum_wutbeat_disatnce = -1
+    target_distance = []
+    whatbeat_distance = []
     for pkey in "rps":
         beatwut = BEATS_WHAT[pkey]
-        wubeat = WHAT_BEATS[pkey]
-
+        wubeat = WHAT_BEATS[pkey]    
         for pcoordinate in player[pkey]:
-            total_sum = 0
             for token in opponent[beatwut]:
-                total_sum = total_sum + my_sum(manhattan_distance(pcoordinate,token))
-            if(total_sum > maximum_target_distance):
-                maximum_target_distance = total_sum
-            
-            total_sum = 0
+                target_distance.append(manhattan_distance(pcoordinate,token))
             for token in opponent[wubeat]:
-                 total_sum = total_sum + my_sum(manhattan_distance(pcoordinate,token))
-            if(total_sum > maximum_wutbeat_disatnce):
-                maximum_wutbeat_disatnce = total_sum    
-    return maximum_target_distance, maximum_wutbeat_disatnce
+                whatbeat_distance.append(manhattan_distance(pcoordinate,token))
+    return target_distance, whatbeat_distance
 
 def BATTLE(symbols):
     types = {s.lower() for s in symbols}
@@ -226,24 +211,16 @@ def BATTLE(symbols):
 def feature_selection(upper, lower, throws):
     #distance
     ud, ld= calculating_distance(upper,lower)
+    ud = my_sum(ud)
+    ld = my_sum(ld)
     #remaining throw
     rtu = (9  - throws["upper"])
     rtl = (9 - throws["lower"]) 
     # number of tokens
     nou =  rtu + len(upper["s"])+ len(upper["p"])+ len(upper["r"])
     nol = rtl + len(lower["s"])+ len(lower["p"])+ len(lower["r"])
-    #have a tokens that do not has a wutbeat
-    upper_inv = 0
-    lower_inv = 0
-    for role in "spr":
-        # there is a lower token that is inv
-        if(len(lower[role]) > 0 and len(upper[WHAT_BEATS[role]]) == 0):
-            lower_inv += 1
-        if(len(upper[role]) > 0 and len(lower[WHAT_BEATS[role]]) == 0):
-            upper_inv +=1
-    
     # return all the features:
-    return ud,ld,rtu,rtl,nou,nol,upper_inv,lower_inv
+    return ud,ld,rtu,rtl,nou,nol
 
 def machine_learning(colour):
     files = []
@@ -268,3 +245,5 @@ def machine_learning(colour):
             x_train.add(np.array([ud,ld,r·tu,rtl,nou,nol]))
             y_train.add(np.array[utility_score])
     # feeding the linear model and finding the best weight for eatch features:
+    
+            

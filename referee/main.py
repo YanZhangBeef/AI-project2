@@ -15,6 +15,7 @@ from referee.options import get_options
 def main():
     # Parse command-line options into a namespace for use throughout this
     # program
+    
     options = get_options()
 
     # Create a star-log for controlling the format of output from within this
