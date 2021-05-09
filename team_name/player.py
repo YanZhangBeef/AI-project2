@@ -5,6 +5,8 @@ import numpy as py
 #python -m referee team_name team_name
 #python -m referee team_name rand/player
 #python -m battleground team_name NMSL greedy
+#python -m battleground team_name NMSL bhy
+
 class Player:
     def __init__(self, player):
         """
@@ -55,7 +57,7 @@ class Player:
                         maximum = -np.inf #  no longer consider this action
                         break
                     maximum = current_utility
-            # 
+        # 
             if maximum > minimum:
                 chosen_action = player_action
                 minimum = maximum        

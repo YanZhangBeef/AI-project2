@@ -139,16 +139,15 @@ class State:
 
     def evaluation(self, colour):
         upper, lower = self.process_a_board()
-        #d: distance to target; rt: remaing throw. no: number of token; ui: invicible tokens
+        
+        #d: distance to target; rt: remaing throw. no: number of token; ui: invicible tokens    
         ud,ld,rtu,rtl,nou,nol,ui,li = feature_selection(upper,lower,self.throws)
-        upper_score = ud + nou + 3*ui
-        lower_score = ld + nol + 3*li
-        #
-
-
+        opponent, inv = ("upper", ui) if colour == "lower" else ("lower", li)        
+        upper_score = 12*ud + (3*nou + 6*rtu) + 3*ui 
+        lower_score = 12*ld + (3*nol + 6*rtl) + 3*li
         #avoid the opponent has a invincible token
         #or you can call it the termination test
-        opponent, inv = ("upper", ui) if colour == "lower" else ("lower", li)
+        
         if(self.throws[colour] >= 7 and self.throws[opponent] > self.throws[colour]):        
             if(self.throws[opponent] >= 8):
                 if self.throws[colour] - self.throws[opponent] > inv:
@@ -175,8 +174,8 @@ def manhattan_distance(a,b):
     return (abs(ax- bx) + abs(ay - by) + abs(ax + ay - bx - by))/2
         
 def my_sum(ls):
-    return 2/np.power(2.73,0.5*ls)
-    
+    #return 2/np.power(2.73,0.4*ls)
+    return 1/(ls+1.1)
 def calculating_distance(player,opponent):
     maximum_target_distance = -1
     maximum_wutbeat_disatnce = -1
@@ -223,15 +222,37 @@ def BATTLE(symbols):
             died.append(s)
     return died, alived
 
+def token_weight(nb_opponent,opponent_tokens_on_board,remaining_throw):
+    if  (opponent_tokens_on_board + remaining_throw == 0):
+        return 9999#wining state
+    return (nb_opponent + remaining_throw/3)/ (opponent_tokens_on_board + remaining_throw)
+
 def feature_selection(upper, lower, throws):
     #distance
     ud, ld= calculating_distance(upper,lower)
     #remaining throw
     rtu = (9  - throws["upper"])
-    rtl = (9 - throws["lower"]) 
-    # number of tokens
-    nou =  rtu + len(upper["s"])+ len(upper["p"])+ len(upper["r"])
-    nol = rtl + len(lower["s"])+ len(lower["p"])+ len(lower["r"])
+    rtl = (9 - throws["lower"])
+    #tokens on board
+    nou =  len(upper["s"])+ len(upper["p"])+ len(upper["r"])
+    nol =  len(lower["s"])+ len(lower["p"])+ len(lower["r"])  
+    #number of tokens (weighted) of each kind of token:
+    weighted_upper = 0
+    weighted_lower = 0
+
+    for g in "rps":
+        beatwut = BEATS_WHAT[g]
+        if nou == 0:
+            weighted_upper += 999
+        else:
+            weighted_upper += (len(upper[g])/nou) * token_weight(len(lower[beatwut]),nol,rtl)
+        if nol == 0:
+            weighted_lower += 999
+        else:
+            weighted_lower += (len(lower[g])/nol) *  token_weight(len(upper[beatwut]),nou,rtu)
+
+    nou = weighted_upper
+    nol = weighted_lower        
     #have a tokens that do not has a wutbeat
     upper_inv = 0
     lower_inv = 0
