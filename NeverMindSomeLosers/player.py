@@ -1,12 +1,12 @@
 from referee.game import *
-from team_name.state import *
+from NeverMindSomeLosers.state import *
 import random
-import numpy as py
 #python -m referee team_name team_name
 #python -m referee team_name rand/player
 #python -m battleground team_name NMSL greedy
 #python -m battleground team_name NMSL bhy
-
+#python -m battleground NeverMindSomeLosers NMSL bhy
+#python -m battleground NeverMindSomeLosers NMSL greedy
 class Player:
     def __init__(self, player):
         """
@@ -47,7 +47,7 @@ class Player:
             maximun = np.inf
             for opponent_action in opponent_actions:
                 action, defeated = self.state.update_state(opponent_action, player_action, self.player)
-                current_utility = self.state.evaluation(self.player)
+                current_utility = self.state.evaluation(self.player,defeated,action)
                 
                 self.state.Backtracking(action,defeated)                
                 # a-b purning

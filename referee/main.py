@@ -3,8 +3,6 @@ Driver program to instantiate two Player classes and begin a game
 between them.
 """
 
-
-
 from referee.log import config, print, comment, _print
 from referee.game import play, IllegalActionException
 from referee.player import PlayerWrapper
@@ -56,7 +54,10 @@ def main():
         )
         # Display the final result of the game to the user.
         comment("game over!", depth=-1)
+        file = open("result.txt","a")
+        file.write(result+"\n")
         print(result)
+        file.close()
 
     # In case the game ends in an abnormal way, print a clean error
     # message for the user (rather than a trace).

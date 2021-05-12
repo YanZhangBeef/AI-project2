@@ -1,5 +1,5 @@
 from referee.game import *
-from team_name.state import *
+from NeverMindSomeLosers.state import *
 import random
 import numpy as py
 #python -m referee team_name team_name

@@ -37,7 +37,7 @@ class State:
                (r, q) for r, q in self.board if sign * r >= 4 - throws
             )
             for x in throw_zone:
-                for s in "rps":
+                for s in random.choice(["prs","rsp","psr","rps","prs","psr"]):
                     yield "THROW", s, x
         occupied = {x for x, s in self.board.items() if any(map(isplayer, s))}
         for x in occupied:
@@ -72,7 +72,7 @@ class State:
             s = self.board[x][0].upper()
             self.board[x].remove(s)
             self.board[y].append(s)
-                # add it to self.board[y]
+            # add it to self.board[y]
             battles.add(y)
             token = s
         upper_movement = (token, upper_action)
@@ -137,25 +137,27 @@ class State:
             self.board[x].append(s)
     
 
-    def evaluation(self, colour):
+    def evaluation(self, colour,defeateds,actions):
         upper, lower = self.process_a_board()
-        
+
         #d: distance to target; rt: remaing throw. no: number of token; ui: invicible tokens    
-        ud,ld,rtu,rtl,nou,nol,ui,li = feature_selection(upper,lower,self.throws)
+        ud,ld,rtu,rtl,nou,nol,ui,li,wu,wl = feature_selection(upper,lower,self.throws)
         opponent, inv = ("upper", ui) if colour == "lower" else ("lower", li)        
-        upper_score = 12*ud + (3*nou + 6*rtu) + 3*ui 
-        lower_score = 12*ld + (3*nol + 6*rtl) + 3*li
+        upper_score = 8*ud + 12*(nou) + (9-rtl) * ui + rtu
+        lower_score = 8*ld + 12*(nol) + (9-rtu) * li + rtl
         #avoid the opponent has a invincible token
         #or you can call it the termination test
-        
         if(self.throws[colour] >= 7 and self.throws[opponent] > self.throws[colour]):        
             if(self.throws[opponent] >= 8):
                 if self.throws[colour] - self.throws[opponent] > inv:
-                    return -999                      
+                    return -999                     
+        
         if(colour == "upper"):
-            return upper_score - lower_score
-        return lower_score - upper_score
-    
+            #return upper_score-lower_score
+            
+            return 8*ud + 12*(nou) + 2*(rtu - rtl)+ wu - 18*(nol)-4*ld-li-wl
+        #return lower_score - upper_score
+        return 8*ld + 12*(nol) + 2*(rtl - rtu) + wl - 18*(nou)-4*ud -ui-wu
 
     def process_a_board(self):  
         upper_tokens = {"s" : [], "p" : [], "r" : []}
@@ -174,28 +176,31 @@ def manhattan_distance(a,b):
     return (abs(ax- bx) + abs(ay - by) + abs(ax + ay - bx - by))/2
         
 def my_sum(ls):
-    #return 2/np.power(2.73,0.4*ls)
-    return 1/(ls+1.1)
-def calculating_distance(player,opponent):
-    maximum_target_distance = -1
-    maximum_wutbeat_disatnce = -1
-    for pkey in "rps":
-        beatwut = BEATS_WHAT[pkey]
-        wubeat = WHAT_BEATS[pkey]
+    return 1/(ls+0.001)-0.001
 
-        for pcoordinate in player[pkey]:
-            total_sum = 0
-            for token in opponent[beatwut]:
-                total_sum = total_sum + my_sum(manhattan_distance(pcoordinate,token))
-            if(total_sum > maximum_target_distance):
-                maximum_target_distance = total_sum
-            
-            total_sum = 0
-            for token in opponent[wubeat]:
-                 total_sum = total_sum + my_sum(manhattan_distance(pcoordinate,token))
-            if(total_sum > maximum_wutbeat_disatnce):
-                maximum_wutbeat_disatnce = total_sum    
-    return maximum_target_distance, maximum_wutbeat_disatnce
+def calculating_distance(upper,lower):
+    UtoL = 0
+    LtoU = 0
+    for key in "rps":
+        beatwut = BEATS_WHAT[key]
+        Max_UtoL = 0
+        for ucoordinate in upper[key]:
+            token_distance = 0
+            for lcoordinate in lower[beatwut]:
+                token_distance += my_sum(manhattan_distance(ucoordinate,lcoordinate))
+            if token_distance > Max_UtoL:
+                 Max_UtoL = token_distance
+        
+        Max_LtoU = 0 
+        for lcoordinate in lower[key]:
+            token_distance = 0
+            for ucoordinate in upper[beatwut]:
+                token_distance += my_sum(manhattan_distance(ucoordinate,lcoordinate))
+            if token_distance > Max_LtoU:
+                Max_LtoU = token_distance
+        UtoL += Max_UtoL
+        LtoU += Max_LtoU
+    return UtoL,LtoU
 
 def BATTLE(symbols):
     types = {s.lower() for s in symbols}
@@ -237,22 +242,21 @@ def feature_selection(upper, lower, throws):
     nou =  len(upper["s"])+ len(upper["p"])+ len(upper["r"])
     nol =  len(lower["s"])+ len(lower["p"])+ len(lower["r"])  
     #number of tokens (weighted) of each kind of token:
+
     weighted_upper = 0
     weighted_lower = 0
-
     for g in "rps":
         beatwut = BEATS_WHAT[g]
         if nou == 0:
-            weighted_upper += 999
+            weighted_upper -= 40
         else:
             weighted_upper += (len(upper[g])/nou) * token_weight(len(lower[beatwut]),nol,rtl)
         if nol == 0:
-            weighted_lower += 999
+            weighted_lower -= 40
         else:
             weighted_lower += (len(lower[g])/nol) *  token_weight(len(upper[beatwut]),nou,rtu)
-
-    nou = weighted_upper
-    nol = weighted_lower        
+    wu = weighted_upper
+    wl = weighted_lower       
     #have a tokens that do not has a wutbeat
     upper_inv = 0
     lower_inv = 0
@@ -260,13 +264,19 @@ def feature_selection(upper, lower, throws):
         # there is a lower token that is inv
         if(len(lower[role]) > 0 and len(upper[WHAT_BEATS[role]]) == 0):
             lower_inv += 1
+
         if(len(upper[role]) > 0 and len(lower[WHAT_BEATS[role]]) == 0):
             upper_inv +=1
-    
+    nou = nou + rtu
+    nol = nol + rtl
     # return all the features:
-    return ud,ld,rtu,rtl,nou,nol,upper_inv,lower_inv
-
+    return ud,ld,rtu,rtl,nou,nol,upper_inv,lower_inv,wu,wl
+##################### REPORT SOURCE CODE########################
+###MACHINE LEARNING PART###
+"""
 def machine_learning(colour):
+    #import numpy as np
+    #from sklearn.linear_model import LinearRegression
     files = []
     x_train = np.array([])
     y_train = np.test([])
@@ -287,5 +297,62 @@ def machine_learning(colour):
             utility_score = data['utility'][0]
             ud,ld,rtu,rtl,nou,nol = feature_selection(upper,lower,colour)
             x_train.add(np.array([ud,ld,r·tu,rtl,nou,nol]))
-            y_train.add(np.array[utility_score])
+            y_train.add(utility_score)
     # feeding the linear model and finding the best weight for eatch features:
+    regr = linear_model.LinearRegression()
+    regr.fit(x_train, y_train)
+    return regr.coef
+
+"""
+##heursistic deepning(recusive)###
+def throw_zone_size(n):
+    if n > 4:
+        return throw_zone_size(8-4) + throw_zone_size(4)
+    elif n == 0:
+        return 5
+    else:
+        return 5 + 1 + throw_zone_size(n-1)
+    
+
+"""
+
+Global_max = -inf
+Global_max_action = None
+def heursistic_get_depth(state):
+    throw =  state.throw[upper]* state.throw[lower]
+    upper_token, lower_token = process_a_board(state.board)
+    upper_length = 0
+    lower_length = 0
+    for l in "rps":
+        upper_length += len(upper_token[l])
+        lower_length += len(lower_token[l])
+    possible_state_without_pruning = (state.throw["upper"] + upper_length)\
+    * (lower_length * state.throw["lower"])
+    #a^b = c; loga(C)= B
+    #
+    suitable_depth = (2*np.log(possible_state_whithout_pruning, 100000)).floor()
+    best_action = recusiveminimax(state,suitable_depth,current_depth)
+    return best_action
+
+
+
+def recusiveminimax(state,wanted_depth, current_depth):
+    if wanted_depth == current_depth:
+        return state.evaluate()
+
+    local_min = inf
+    for player_action in player_actions:
+        for opponent_action in opponent_actions:
+            newstate = deepcopy(state)
+            state.update(player_action,lower_action)
+            current_score = recusiveminimax(wanted_depth,current_depth+1,newstate)
+            if current_score <= Global_max:
+                #this will be pass to the fist layer then it knows its time to run a-b pruning
+                return current_score
+            elif(current_score> local_min):
+                local_min = current_score
+                if(current_depth == 1):
+                    Global_max_action = player_action
+    Global_max = local_min# update the global max
+    return maximum #passing the utility score to the layer above
+"""

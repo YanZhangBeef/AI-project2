@@ -34,7 +34,7 @@ NUM_PLAYERS = 2
 def play(
     players,
     delay=0,
-    print_state=True,
+    print_state=False,
     use_debugboard=False,
     use_colour=False,
     use_unicode=False,
@@ -115,7 +115,7 @@ def play(
     turn = 1
     player_1, player_2 = players
     while not game.over():
-        comment(f"Turn {turn}", depth=-1)
+        #comment(f"Turn {turn}", depth=-1)
 
         # Ask both players for their next action (calling .action() methods)
         action_1 = player_1.action()

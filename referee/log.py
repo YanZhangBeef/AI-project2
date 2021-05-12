@@ -80,7 +80,7 @@ class StarLog:
 
     def comment(self, *args, **kwargs):
         """Shortcut to log at level 1 (commentary/info)."""
-        self.log(*args, level=1, **kwargs)
+        #self.log(*args, level=1, **kwargs)
 
     def debug(self, *args, **kwargs):
         """Shortcut to log at level 2 (debug)."""
